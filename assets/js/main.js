@@ -254,7 +254,7 @@ const dashboardTop = () => {
                 if (!voiceTalkBox.querySelector('.voice_talk_answer')) {
                   const answer = document.createElement('p');
                   answer.className = 'voice_talk_answer';
-                  answer.textContent = '네, 에어샤워기 풍속 중으로 켰습니다.';
+                  answer.textContent = '네, 에어샤워기 풍속 강으로 켰습니다.';
                   voiceTalkBox.appendChild(answer);
                   requestAnimationFrame(() => {
                     answer.classList.add('visible');
@@ -286,7 +286,7 @@ const dashboardTop = () => {
                 if (!voiceTalkBox.querySelector('.voice_talk_answer')) {
                   const answer = document.createElement('p');
                   answer.className = 'voice_talk_answer';
-                  answer.textContent = '네, 에어드라이 자동모드로 켰습니다.';
+                  answer.textContent = '네, 에어드라이 표준모드로 켰습니다.';
                   voiceTalkBox.appendChild(answer);
                   requestAnimationFrame(() => {
                     answer.classList.add('visible');
