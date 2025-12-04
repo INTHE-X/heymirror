@@ -79,22 +79,28 @@
       <p class="tit">Air Dry</p>
       <p class="airdry_status">AI 제습 케어 진행중입니다.</p>
       <div class="airdry_img">
+        <div class="video_box">
+          <video class="airdry_video" muted playsinline loop></video>
+        </div>
+        <video class="airdry_video_off" muted playsinline></video>
         <img src="./assets/images/main/airdry_fan.png" alt="" class="on">
       </div>
+      
       <div class="airdry_btn_wrap">
-        <button type="button" class="btn_mode sleep">
+        <button type="button" class="btn_mode sleep" data-video="./assets/video/airdry_sleep.webm">
           <span class="txt">취침</span>
         </button>
-        <button type="button" class="btn_mode normal">
+        <button type="button" class="btn_mode normal active" data-video="./assets/video/airdry_sleep.webm">
           <span class="txt">표준</span>
         </button>
-        <button type="button" class="btn_mode turbo">
+        <button type="button" class="btn_mode turbo" data-video="./assets/video/airdry_auto.webm">
           <span class="txt">쾌속</span>
         </button>
-        <button type="button" class="btn_mode auto active">
+        <button type="button" class="btn_mode auto" data-video="./assets/video/airdry_normal.webm">
           <span class="txt">자동</span>
         </button>
       </div>
+      
       <div class="humidity_btn_box">
         <button type="button" class="btn_up">
           <span class="ic_arrow"></span>
@@ -242,7 +248,6 @@
     if (currentLevel) {
       const initialVideo = getVideoByLevel(currentLevel);
 
-      // 모든 비디오 정리
       videos.forEach((v) => {
         v.classList.remove('active');
         v.pause();
@@ -254,7 +259,6 @@
       }
     }
 
-    // main에 is_active 붙을 때 최초 1회 0.4초 후 재생 예약
     const scheduleFirstStart = () => {
       if (hasStartedOnce) return;
       if (!mainPage || !mainPage.classList.contains('is_active')) return;
@@ -284,7 +288,6 @@
       observer.observe(mainPage, { attributes: true });
     }
 
-    // 강·중·약 버튼 클릭
     levelBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
         const level = getLevelClass(btn);
@@ -324,7 +327,6 @@
 
     if (!lightingImg || !btns.length || !range || !percentValue) return;
 
-    // 버튼 클릭 시 색상 변경 
     btns.forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.classList.contains('active')) return;
@@ -352,7 +354,6 @@
       });
     });
 
-    // range 조절 시 퍼센트 텍스트 & 이미지 숫자 변경 + 0일 때 숨김
     range.addEventListener('input', () => {
       const val = range.value;
       percentValue.textContent = val;
@@ -371,14 +372,102 @@
   };
   voiceCommandLightingWrap();
 
-  /* airdry 버튼모음 (약/중/강) */
+  /* airdry 버튼모음 - 비디오 재생 기능 추가 */
   const voiceCommandAirDryBtnWrap = () => {
-    const levelBtns = document.querySelectorAll('.voice_command_wrap .airdry_btn_wrap .btn_mode');
+    const airDryBox = document.querySelector('.voice_airdry_box');
+    if (!airDryBox) return;
 
-    levelBtns.forEach(btn => {
+    const modeBtns = airDryBox.querySelectorAll('.airdry_btn_wrap .btn_mode');
+    const videoEl = airDryBox.querySelector('.airdry_video');
+    const fanImg = airDryBox.querySelector('.airdry_img .on');
+
+    if (!modeBtns.length || !videoEl || !fanImg) return;
+
+    let lastModeVideo = null;
+    let isTransitioning = false;
+
+    // 영상 숨기기
+    const hideVideo = (video) => {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.style.display = 'none';
+      video.style.opacity = '0';
+      video.style.visibility = 'hidden';
+    };
+
+    // 모드 영상 재생
+    const playModeVideo = (btn) => {
+      if (isTransitioning) return;
+
+      const src = btn?.dataset?.video;
+      if (!src) return;
+
+      if (lastModeVideo === src && !videoEl.paused) return;
+
+      isTransitioning = true;
+
+      // 이전 영상이 재생 중이면 크로스페이드
+      if (lastModeVideo && !videoEl.paused) {
+        videoEl.style.transition = 'opacity 0.6s ease';
+        videoEl.style.opacity = '0';
+
+        setTimeout(() => {
+          videoEl.src = src;
+          videoEl.play().catch(e => console.log("Video play error:", e));
+
+          void videoEl.offsetWidth;
+          videoEl.style.opacity = '1';
+
+          setTimeout(() => {
+            videoEl.style.transition = '';
+            isTransitioning = false;
+          }, 500);
+        }, 0);
+
+      } else {
+        // 처음 재생 시 (정지 이미지에서 영상으로)
+        videoEl.style.display = 'block';
+        videoEl.style.visibility = 'visible';
+        videoEl.style.opacity = '0';
+        videoEl.src = src;
+        videoEl.play().catch(e => console.log("Video play error:", e));
+
+        void videoEl.offsetWidth;
+
+        videoEl.style.transition = 'opacity 0.6s ease';
+        fanImg.style.transition = 'opacity 0.6s ease';
+        videoEl.style.opacity = '1';
+        fanImg.style.opacity = '0';
+
+        setTimeout(() => {
+          fanImg.style.visibility = 'hidden';
+          videoEl.style.transition = '';
+          fanImg.style.transition = '';
+          isTransitioning = false;
+        }, 650);
+      }
+
+      lastModeVideo = src;
+    };
+
+    // 초기 설정 - active 버튼의 영상 자동 재생
+    const initialBtn = airDryBox.querySelector('.airdry_btn_wrap .btn_mode.active');
+    if (initialBtn) {
+      setTimeout(() => {
+        playModeVideo(initialBtn);
+      }, 100);
+    }
+
+    // 버튼 클릭 이벤트
+    modeBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        levelBtns.forEach(b => b.classList.remove('active'));
+        if (isTransitioning) return;
+
+        modeBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+
+        playModeVideo(btn);
       });
     });
   }
@@ -386,10 +475,11 @@
 
   /* radio 버튼 모음 */
   const voiceCommandRadioBtnWrap = () => {
-    // play/stop 버튼 선택
     const voiceCommandRadioPlayStop = () => {
       const btnPlay = document.querySelector('.voice_radio_box .btn_play');
       const radioBox = document.querySelector('.voice_radio_box');
+
+      if (!btnPlay || !radioBox) return;
 
       btnPlay.addEventListener('click', () => {
         btnPlay.classList.toggle('stop');
@@ -403,8 +493,6 @@
     };
     voiceCommandRadioPlayStop();
 
-
-    // AM/FM 선택
     const voiceCommandRadioFrequency = () => {
       const frequencyBtns = document.querySelectorAll('.frequency_btn_wrap .btn_frequency');
 
@@ -417,10 +505,11 @@
     }
     voiceCommandRadioFrequency();
 
-    // 볼륨 조절
     const voiceCommandRadioVolume = () => {
       const radioRange = document.getElementById('radioRange');
       const radioVolume = document.querySelector('.radio_volume');
+      
+      if (!radioRange || !radioVolume) return;
   
       const updateRange = () => {
         const val = radioRange.value;
@@ -437,7 +526,6 @@
 
   /* searching 버튼 모음 */
   const voiceCommandSearchingBtnWrap = () => {
-    // 닫기버튼
     const voiceCommand = document.getElementById('voiceCommand');
     if (!voiceCommand) return;
 
@@ -455,7 +543,6 @@
       closeBtn.addEventListener('click', removeActiveClass);
     }
 
-    // 텍스트 스크롤 영역
     const searchingScrollEvent = () => {
       const box = document.querySelector('.searching_txt_box');
       const inner = box?.querySelector('.box_inner');
@@ -466,14 +553,12 @@
         const scrollHeight = inner.scrollHeight;
         const clientHeight = inner.clientHeight;
 
-        // 스크롤이 맨 위가 아닐 때 scrolling 클래스 추가
         if (scrollTop > 0) {
           box.classList.add('scrolling');
         } else {
           box.classList.remove('scrolling');
         }
 
-        // 맨 아래 도달 시 is_end 클래스 추가
         if (scrollTop + clientHeight >= scrollHeight - 1) {
           box.classList.add('is_end');
         } else {
